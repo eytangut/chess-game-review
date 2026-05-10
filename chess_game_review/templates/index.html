@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chess Game Review</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 900px; line-height: 1.4; }
+      textarea { width: 100%; min-height: 220px; font-family: ui-monospace, SFMono-Regular, monospace; }
+      button { margin-top: 0.8rem; padding: 0.5rem 0.8rem; }
+      pre { background: #111; color: #ddd; padding: 1rem; overflow: auto; border-radius: 8px; }
+      .row { display: flex; gap: 1rem; flex-wrap: wrap; }
+      .card { border: 1px solid #ddd; border-radius: 8px; padding: 0.8rem; min-width: 250px; }
+    </style>
+  </head>
+  <body>
+    <h1>Chess Game Review</h1>
+    <div class="row">
+      <div class="card"><strong>Analysis Profile:</strong> {{ config.analysis_profile }}</div>
+      <div class="card"><strong>Analyze Color:</strong> {{ config.analyze_color }}</div>
+      <div class="card"><strong>API Mode:</strong> {{ config.external_api_mode }}{% if config.offline_mode %} (offline){% endif %}</div>
+    </div>
+
+    <p>Paste a PGN and click Analyze. API mocking/replacement is controlled by env vars.</p>
+    <textarea id="pgn" placeholder="Paste PGN here"></textarea>
+    <br />
+    <button id="analyze">Analyze</button>
+
+    <h2>Result</h2>
+    <pre id="output">No analysis yet.</pre>
+
+    <script>
+      document.getElementById('analyze').addEventListener('click', async () => {
+        const pgn = document.getElementById('pgn').value;
+        const resp = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pgn })
+        });
+        const data = await resp.json();
+        document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+      });
+    </script>
+  </body>
+</html>
