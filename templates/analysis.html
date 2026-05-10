@@ -34,7 +34,7 @@
         </h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
           {{ analysis.metadata.event }}
-          {% if analysis.metadata.date and analysis.metadata.date != '????.??.??' %}
+          {% if analysis.metadata.date and '?' not in analysis.metadata.date %}
             · {{ analysis.metadata.date }}
           {% endif %}
           · {{ analysis.total_moves }} moves analyzed
@@ -367,8 +367,11 @@
 
 {% block scripts %}
 <!-- jQuery (required by chessboard.js) -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"
+  integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+  crossorigin="anonymous"></script>
 <!-- chessboard.js -->
-<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"
+  crossorigin="anonymous"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 {% endblock %}

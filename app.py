@@ -128,7 +128,7 @@ def analyze():
         )
     except Exception as e:
         logger.error("Analysis failed: %s\n%s", e, traceback.format_exc())
-        flash(f"Analysis error: {e}", "error")
+        flash("Analysis failed. Please check your PGN and try again.", "error")
         return redirect(url_for("index"))
 
     # Store in recent analyses
@@ -170,7 +170,7 @@ def api_analyze():
         return jsonify(result)
     except Exception as e:
         logger.error("API analysis failed: %s\n%s", e, traceback.format_exc())
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Analysis failed. Check server logs for details."}), 500
 
 
 @app.route("/api/download_openings")

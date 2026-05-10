@@ -76,31 +76,34 @@ def time_spent_per_move(clock_times, time_control=None):
             pass
 
     time_spent = []
-    # Separate white (even indices) and black (odd indices) clock times
+    # Separate white (even indices 0,2,4,...) and black (odd indices 1,3,5,...) clock times
     white_times = [clock_times[i] for i in range(0, len(clock_times), 2)]
     black_times = [clock_times[i] for i in range(1, len(clock_times), 2)]
 
-    for color_times, initial in [(white_times, initial_white), (black_times, initial_black)]:
-        # Infer time spent: prev_remaining + increment - current_remaining
+    def _spent_for_series(color_times, initial):
+        """Compute time-spent list for one player's clock readings."""
         prev = initial
-        for i, current in enumerate(color_times):
+        spent = []
+        for current in color_times:
             if current is None or prev is None:
-                time_spent.append(None)
+                spent.append(None)
             else:
-                spent = prev + increment - current
-                time_spent.append(max(0, spent))
+                spent.append(max(0, prev + increment - current))
             prev = current
+        return spent
+
+    white_spent = _spent_for_series(white_times, initial_white)
+    black_spent = _spent_for_series(black_times, initial_black)
 
     # Interleave white and black times back to move order
     result = []
-    wi = 0
-    bi = 0
+    wi = bi = 0
     for i in range(len(clock_times)):
         if i % 2 == 0:
-            result.append(time_spent[wi] if wi < len(white_times) else None)
+            result.append(white_spent[wi] if wi < len(white_spent) else None)
             wi += 1
         else:
-            result.append(time_spent[len(white_times) + bi] if bi < len(black_times) else None)
+            result.append(black_spent[bi] if bi < len(black_spent) else None)
             bi += 1
 
     return result

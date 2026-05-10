@@ -129,7 +129,7 @@ def is_sacrifice(board_before, move):
     board = board_before.copy()
 
     # Check if the move captures a piece
-    captured_piece = board.piece_at(move.to_sq) if hasattr(move, 'to_sq') else board.piece_at(move.to_square)
+    captured_piece = board.piece_at(move.to_square)
     moving_piece = board.piece_at(move.from_square)
 
     if moving_piece is None:

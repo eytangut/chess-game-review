@@ -8,10 +8,10 @@ import chess.pgn
 
 def parse_pgn(pgn_source):
     """
-    Parse a PGN file or string and return a list of game dicts.
+    Parse PGN content and return a list of game dicts.
 
     Args:
-        pgn_source: file path string or PGN content string
+        pgn_source: PGN content as a string
 
     Returns:
         List of game dicts, each with keys:
@@ -19,15 +19,7 @@ def parse_pgn(pgn_source):
             - moves: list of move dicts {san, uci, ply, color}
             - clock_times: list of remaining times in seconds, or None
     """
-    # Determine if pgn_source is a file path or raw PGN string
-    if isinstance(pgn_source, str) and "\n" not in pgn_source and len(pgn_source) < 300:
-        try:
-            with open(pgn_source, "r", encoding="utf-8", errors="replace") as f:
-                pgn_text = f.read()
-        except (OSError, FileNotFoundError):
-            pgn_text = pgn_source
-    else:
-        pgn_text = pgn_source
+    pgn_text = pgn_source if isinstance(pgn_source, str) else pgn_source.decode("utf-8", errors="replace")
 
     games = []
     pgn_io = io.StringIO(pgn_text)
