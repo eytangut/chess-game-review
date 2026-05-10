@@ -30,8 +30,6 @@ class OpeningDB:
                 continue
             parts = [part.strip() for part in line.split("\t", 2)]
             if len(parts) < 3:
-                parts = [part.strip() for part in line.split("\\t", 2)]
-            if len(parts) < 3:
                 continue
             eco, name, pgn_moves = parts
             game = chess.pgn.read_game(io.StringIO(pgn_moves))

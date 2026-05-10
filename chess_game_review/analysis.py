@@ -145,6 +145,7 @@ def analyze_game(
 
     prev_clock = {"White": None, "Black": None}
     time_spent = {"White": [], "Black": []}
+    think_long_wrong = {"White": 0, "Black": 0}
     node: chess.pgn.GameNode = game
 
     for ply, move in enumerate(game.mainline_moves(), start=1):
@@ -220,6 +221,8 @@ def analyze_game(
             if clk is not None and prev_clock[player] is not None:
                 spent = max(0, prev_clock[player] - clk)
                 time_spent[player].append(spent)
+                if spent > 60 and classification in {"Mistake", "Blunder", "Missed Win"}:
+                    think_long_wrong[player] += 1
             if clk is not None:
                 prev_clock[player] = clk
             node = next_node
@@ -278,7 +281,7 @@ def analyze_game(
             side: {
                 "avg_time_per_move": round(sum(vals) / len(vals), 2) if vals else None,
                 "time_pressure_moves": sum(1 for v in vals if v < 30),
-                "think_long_play_wrong": 0,
+                "think_long_play_wrong": think_long_wrong[side],
             }
             for side, vals in time_spent.items()
         },
