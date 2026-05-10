@@ -145,13 +145,16 @@ def analyze_game(
 
     prev_clock = {"White": None, "Black": None}
     time_spent = {"White": [], "Black": []}
+    node: chess.pgn.GameNode = game
 
     for ply, move in enumerate(game.mainline_moves(), start=1):
+        next_node = node.variations[0] if node.variations else None
         player = "White" if board.turn == chess.WHITE else "Black"
         if config.analyze_color.lower() in {"white", "black"} and player.lower() != config.analyze_color.lower():
             board.push(move)
             eval_series.append(_material_eval(board))
             uci_history.append(move.uci())
+            node = next_node if next_node is not None else node
             continue
 
         legal_count = board.legal_moves.count()
@@ -212,14 +215,14 @@ def analyze_game(
             }
         )
 
-        node = game.next()
-        if node:
-            clk = _extract_clock(node)
+        if next_node:
+            clk = _extract_clock(next_node)
             if clk is not None and prev_clock[player] is not None:
                 spent = max(0, prev_clock[player] - clk)
                 time_spent[player].append(spent)
             if clk is not None:
                 prev_clock[player] = clk
+            node = next_node
 
     critical.sort(key=lambda item: item["swing"], reverse=True)
     critical = critical[:5]

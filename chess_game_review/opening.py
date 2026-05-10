@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,7 +34,7 @@ class OpeningDB:
             if len(parts) < 3:
                 continue
             eco, name, pgn_moves = parts
-            game = chess.pgn.read_game(__import__("io").StringIO(pgn_moves))
+            game = chess.pgn.read_game(io.StringIO(pgn_moves))
             if game is None:
                 continue
             board = game.board()

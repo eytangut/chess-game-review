@@ -21,10 +21,11 @@ class AnalysisTests(unittest.TestCase):
     def test_parse_and_analyze_returns_core_sections(self) -> None:
         games = parse_games(PGN)
         self.assertEqual(len(games), 1)
+        config = AppConfig()
         result = analyze_game(
             games[0],
-            config=AppConfig(),
-            opening_db=OpeningDB.from_tsv("/home/runner/work/chess-game-review/chess-game-review/chess_game_review/data/openings.tsv"),
+            config=config,
+            opening_db=OpeningDB.from_tsv(config.opening_db_path),
             narrative_provider=MockNarrativeProvider(),
         )
         self.assertIn("metadata", result)
