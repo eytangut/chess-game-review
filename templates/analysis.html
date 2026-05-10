@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {{ analysis.metadata.white }} vs {{ analysis.metadata.black }} – Chess Review
+{% endblock %}
+
+{% block main_class %}{% endblock %}
+
+{% block head %}
+  <!-- chessboard.js CSS -->
+  <link rel="stylesheet"
+    href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-full px-4 sm:px-6 lg:px-8 py-6">
+
+  {# ── Game metadata header ─────────────────────────────────── #}
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 mb-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-bold text-gray-900 dark:text-gray-100">
+          {{ analysis.metadata.white }}
+          {% if analysis.metadata.white_elo %}
+            <span class="text-sm font-normal text-gray-500">({{ analysis.metadata.white_elo }})</span>
+          {% endif %}
+          <span class="text-gray-400 mx-2">vs</span>
+          {{ analysis.metadata.black }}
+          {% if analysis.metadata.black_elo %}
+            <span class="text-sm font-normal text-gray-500">({{ analysis.metadata.black_elo }})</span>
+          {% endif %}
+        </h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          {{ analysis.metadata.event }}
+          {% if analysis.metadata.date and analysis.metadata.date != '????.??.??' %}
+            · {{ analysis.metadata.date }}
+          {% endif %}
+          · {{ analysis.total_moves }} moves analyzed
+        </p>
+        {% if analysis.opening %}
+          <div class="mt-2 flex items-center gap-2">
+            <span class="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-mono font-semibold px-2 py-0.5 rounded">
+              {{ analysis.opening.eco }}
+            </span>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {{ analysis.opening.name }}
+              {% if analysis.opening.variation %}: <span class="text-gray-500">{{ analysis.opening.variation }}</span>{% endif %}
+            </span>
+          </div>
+          {% if analysis.opening_description %}
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 italic">{{ analysis.opening_description }}</p>
+          {% endif %}
+        {% endif %}
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="text-center">
+          <div class="text-3xl font-bold
+            {% if analysis.metadata.result == '1-0' %}text-green-600
+            {% elif analysis.metadata.result == '0-1' %}text-red-500
+            {% else %}text-gray-500{% endif %}">
+            {{ analysis.metadata.result }}
+          </div>
+        </div>
+        <a href="{{ url_for('api_export_pgn', session_id=session.get('session_id', 'download')) }}"
+          class="px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors">
+          ⬇ Export PGN
+        </a>
+      </div>
+    </div>
+  </div>
+
+  {# ── Accuracy summary bar ─────────────────────────────────── #}
+  <div class="grid grid-cols-2 gap-4 mb-6">
+    {% for player, color_name, acc_key in [
+      (analysis.metadata.white, 'white', 'white'),
+      (analysis.metadata.black, 'black', 'black')
+    ] %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="w-4 h-4 rounded-full inline-block {{ 'bg-white border-2 border-gray-400' if color_name == 'white' else 'bg-gray-800 dark:bg-gray-200' }}"></span>
+          <span class="font-semibold text-sm">{{ player }}</span>
+        </div>
+        <span class="text-2xl font-bold {% if analysis.accuracy[acc_key] and analysis.accuracy[acc_key] >= 80 %}text-green-500{% elif analysis.accuracy[acc_key] and analysis.accuracy[acc_key] >= 60 %}text-yellow-500{% else %}text-red-500{% endif %}">
+          {% if analysis.accuracy[acc_key] %}{{ analysis.accuracy[acc_key] | round(1) }}%{% else %}N/A{% endif %}
+        </span>
+      </div>
+      {% if analysis.accuracy[acc_key] %}
+      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+        <div class="h-2 rounded-full {% if analysis.accuracy[acc_key] >= 80 %}bg-green-500{% elif analysis.accuracy[acc_key] >= 60 %}bg-yellow-500{% else %}bg-red-500{% endif %}"
+          style="width: {{ analysis.accuracy[acc_key] | round(1) }}%"></div>
+      </div>
+      {% endif %}
+      <div class="flex gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
+        {% set player_moves = analysis.moves | selectattr('color', 'equalto', acc_key) | list %}
+        <span>Blunders: <b class="text-red-500">{{ player_moves | selectattr('classification', 'equalto', 'blunder') | list | length }}</b></span>
+        <span>Mistakes: <b class="text-orange-500">{{ player_moves | selectattr('classification', 'equalto', 'mistake') | list | length }}</b></span>
+        <span>Inaccuracies: <b class="text-yellow-500">{{ player_moves | selectattr('classification', 'equalto', 'inaccuracy') | list | length }}</b></span>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {# ── Main board + move list area ──────────────────────────── #}
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+
+    {# Left: board + eval bar #}
+    <div class="xl:col-span-2 flex flex-col gap-4">
+      <div class="flex gap-3 items-start">
+        {# Eval bar #}
+        <div class="flex flex-col items-center">
+          <div class="eval-bar-container">
+            <div id="eval-bar-white" class="eval-bar-white" style="height: 50%"></div>
+            <div id="eval-bar-black" class="eval-bar-black" style="height: 50%"></div>
+          </div>
+          <span id="eval-text" class="text-xs font-mono mt-1 text-gray-600 dark:text-gray-400">0.0</span>
+        </div>
+        {# Board #}
+        <div class="flex-1">
+          <div id="board" class="w-full" style="max-width: 560px;"></div>
+          {# Board navigation #}
+          <div class="flex justify-center gap-2 mt-3">
+            <button onclick="goToMove(0)" title="Start" class="nav-btn">⏮</button>
+            <button onclick="prevMove()" title="Previous" class="nav-btn">◀</button>
+            <button onclick="nextMove()" title="Next" class="nav-btn">▶</button>
+            <button onclick="goToMove(totalMoves)" title="End" class="nav-btn">⏭</button>
+            <button onclick="toggleFlip()" title="Flip board" class="nav-btn">⇅</button>
+          </div>
+        </div>
+      </div>
+
+      {# Eval graph #}
+      {% if analysis.engine_available %}
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Evaluation Graph</h3>
+        <div style="height: 140px;">
+          <canvas id="eval-chart"></canvas>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    {# Right: move list #}
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col" style="max-height: 640px;">
+      <div class="p-3 border-b border-gray-100 dark:border-gray-700">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Moves</h3>
+      </div>
+      <div id="move-list" class="overflow-y-auto flex-1 p-2 move-list-scroll">
+        <div class="grid grid-cols-2 gap-0.5 font-mono text-sm">
+          {% for move in analysis.moves %}
+            {% if move.color == 'white' %}
+            <div class="text-right pr-1 text-gray-400 dark:text-gray-500 text-xs leading-7">{{ move.move_number }}.</div>
+            <div class="col-start-2 -ml-8"></div>
+            {% endif %}
+            <div id="move-{{ move.index }}"
+              onclick="goToMove({{ move.index + 1 }})"
+              class="move-item px-2 py-1 rounded cursor-pointer {{ 'col-start-2' if move.color == 'black' else '' }} {{ move.color_class | replace('text-', 'move-') }}"
+              data-index="{{ move.index }}"
+              title="{{ move.label }}{{ ' (' + move.cp_loss | string + ' cp)' if move.cp_loss else '' }}">
+              {{ move.san }}{% if move.symbol %}<sup class="text-xs">{{ move.symbol }}</sup>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Move detail panel ────────────────────────────────────── #}
+  <div id="move-detail" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6 hidden">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-semibold text-gray-800 dark:text-gray-200" id="detail-title">Move Detail</h3>
+      <button onclick="document.getElementById('move-detail').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">✕</button>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Played</div>
+        <div id="detail-played" class="font-mono font-bold text-lg"></div>
+        <div id="detail-classification" class="text-sm font-medium mt-1"></div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Best Move</div>
+        <div id="detail-best" class="font-mono font-bold text-lg text-green-500"></div>
+        <div id="detail-eval-change" class="text-xs text-gray-500 mt-1"></div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide mb-1">Tactics</div>
+        <div id="detail-tactics" class="text-xs"></div>
+      </div>
+    </div>
+    <div id="detail-alternatives" class="mt-3 text-xs text-gray-500"></div>
+  </div>
+
+  {# ── Tab panels ───────────────────────────────────────────── #}
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700">
+    <!-- Tab headers -->
+    <div class="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+      {% for tab_id, tab_label in [('overview', '📊 Overview'), ('tactics', '⚔ Tactics'), ('time', '⏱ Time'), ('patterns', '🔄 Patterns'), ('ai', '🤖 AI Summary')] %}
+      <button onclick="switchTab('{{ tab_id }}')"
+        id="tab-{{ tab_id }}"
+        class="tab-btn px-5 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors
+               {{ 'border-green-500 text-green-600 dark:text-green-400' if loop.first else 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300' }}">
+        {{ tab_label }}
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- Tab panels -->
+    <div class="p-5">
+
+      {# Overview tab #}
+      <div id="panel-overview" class="tab-panel">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {% for phase in ['opening', 'middlegame', 'endgame'] %}
+          {% set pdata = analysis.phase_stats.get(phase, {}) %}
+          <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
+            <h4 class="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-3 capitalize">{{ phase }}</h4>
+            <div class="text-3xl font-bold mb-2 {% if pdata.accuracy and pdata.accuracy >= 80 %}text-green-500{% elif pdata.accuracy and pdata.accuracy >= 60 %}text-yellow-500{% else %}text-red-500{% endif %}">
+              {% if pdata.accuracy %}{{ pdata.accuracy }}%{% else %}–{% endif %}
+            </div>
+            <div class="text-xs text-gray-500 space-y-1">
+              <div>Moves: {{ pdata.move_count or 0 }}</div>
+              <div>Blunders: <span class="text-red-500">{{ pdata.blunders or 0 }}</span></div>
+              <div>Mistakes: <span class="text-orange-500">{{ pdata.mistakes or 0 }}</span></div>
+              <div>Inaccuracies: <span class="text-yellow-500">{{ pdata.inaccuracies or 0 }}</span></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        {% if analysis.critical_moments %}
+        <div class="mt-6">
+          <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Critical Moments</h4>
+          <div class="space-y-2">
+            {% for idx in analysis.critical_moments %}
+              {% set m = analysis.moves[idx] if idx < analysis.moves | length else None %}
+              {% if m %}
+              <div class="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+                onclick="goToMove({{ m.index + 1 }})">
+                <span class="text-sm font-mono text-gray-500">{{ m.move_number }}{{ '.' if m.color == 'white' else '...' }}</span>
+                <span class="font-mono font-bold">{{ m.san }}</span>
+                <span class="{{ m.color_class }}">{{ m.label }}</span>
+                {% if m.cp_loss %}
+                  <span class="text-xs text-gray-400">({{ m.cp_loss | round | int }} cp)</span>
+                {% endif %}
+              </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {# Tactics tab #}
+      <div id="panel-tactics" class="tab-panel hidden">
+        {% set all_tactics = [] %}
+        {% for m in analysis.moves %}
+          {% for t in m.tactics %}
+            {% set _ = all_tactics.append((m, t)) %}
+          {% endfor %}
+        {% endfor %}
+        {% if all_tactics %}
+        <div class="space-y-2">
+          {% for m, t in all_tactics %}
+          <div class="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
+            onclick="goToMove({{ m.index + 1 }})">
+            <span class="inline-block px-2 py-0.5 rounded text-xs font-medium
+              {% if t.severity == 'high' %}bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300
+              {% elif t.severity == 'medium' %}bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300
+              {% else %}bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300{% endif %}">
+              {{ t.severity | upper }}
+            </span>
+            <div>
+              <div class="text-xs text-gray-500 mb-0.5">Move {{ m.move_number }}{{ '.' if m.color == 'white' else '...' }} {{ m.san }}</div>
+              <div class="text-sm text-gray-700 dark:text-gray-300">{{ t.description }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500 dark:text-gray-400 text-sm">No significant tactical patterns detected.</p>
+        {% endif %}
+      </div>
+
+      {# Time tab #}
+      <div id="panel-time" class="tab-panel hidden">
+        {% if analysis.time_stats %}
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          {% for phase, tdata in analysis.time_stats.items() %}
+          <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
+            <h4 class="text-sm font-semibold text-gray-600 dark:text-gray-300 capitalize mb-2">{{ phase }}</h4>
+            <div class="text-2xl font-bold">
+              {% if tdata.avg_seconds %}{{ tdata.avg_seconds }}s{% else %}–{% endif %}
+            </div>
+            <div class="text-xs text-gray-500 mt-1">avg per move</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500 dark:text-gray-400 text-sm">No clock data available in this PGN.</p>
+        <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">Clock annotations (%clk) are required for time analysis. Export your games from Lichess or Chess.com to include them.</p>
+        {% endif %}
+      </div>
+
+      {# Patterns tab #}
+      <div id="panel-patterns" class="tab-panel hidden">
+        {% if analysis.patterns %}
+        <ul class="space-y-3">
+          {% for pattern in analysis.patterns %}
+          <li class="flex items-start gap-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+            <span class="text-yellow-500 text-lg mt-0.5">⚠</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ pattern }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-gray-500 dark:text-gray-400 text-sm">No recurring patterns detected. Nice clean game!</p>
+        {% endif %}
+      </div>
+
+      {# AI Summary tab #}
+      <div id="panel-ai" class="tab-panel hidden">
+        {% if analysis.ai_summary %}
+          {% if analysis.ai_summary.get('mock') %}
+          <div class="mb-3 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-300">
+            ℹ Template summary (set GEMINI_API_KEY for AI-generated summaries)
+          </div>
+          {% endif %}
+          <div class="prose dark:prose-invert max-w-none mb-6">
+            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Game Narrative</h4>
+            {% for para in analysis.ai_summary.narrative.split('\n\n') %}
+              <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">{{ para }}</p>
+            {% endfor %}
+          </div>
+          {% if analysis.ai_summary.tips %}
+          <div>
+            <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Improvement Tips</h4>
+            <ul class="space-y-2">
+              {% for tip in analysis.ai_summary.tips %}
+              <li class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <span class="text-green-500 mt-0.5">✓</span>
+                <span>{{ tip }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+        {% else %}
+        <p class="text-gray-500 dark:text-gray-400 text-sm">
+          AI summary not available.
+          {% if not ai_available %}Set <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">GEMINI_API_KEY</code> environment variable to enable AI summaries.{% endif %}
+        </p>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+{# Pass analysis data to JavaScript #}
+<script>
+  const ANALYSIS_DATA = {{ analysis | tojson }};
+</script>
+{% endblock %}
+
+{% block scripts %}
+<!-- jQuery (required by chessboard.js) -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<!-- chessboard.js -->
+<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

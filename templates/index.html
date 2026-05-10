@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Chess Game Review – Upload{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+
+  <!-- Hero -->
+  <div class="text-center mb-10">
+    <div class="text-6xl mb-4">♟</div>
+    <h1 class="text-4xl font-extrabold text-gray-900 dark:text-gray-50 mb-3">Chess Game Review</h1>
+    <p class="text-lg text-gray-600 dark:text-gray-400">
+      Upload your PGN game and get a deep analysis with Stockfish — move classifications,
+      accuracy scores, opening identification, tactical patterns, and more.
+    </p>
+  </div>
+
+  <!-- Upload Form -->
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 mb-8">
+    <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data" id="upload-form">
+
+      <!-- Drag & Drop area -->
+      <div id="drop-zone"
+        class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-10 text-center mb-6
+               hover:border-green-400 dark:hover:border-green-500 transition-colors cursor-pointer"
+        onclick="document.getElementById('pgn_file').click()"
+        ondragover="event.preventDefault(); this.classList.add('border-green-400')"
+        ondragleave="this.classList.remove('border-green-400')"
+        ondrop="handleDrop(event)">
+        <div class="text-4xl mb-3">📁</div>
+        <p class="text-gray-600 dark:text-gray-400 mb-2">
+          <span class="font-semibold text-green-600 dark:text-green-400">Click to upload</span>
+          or drag &amp; drop your PGN file here
+        </p>
+        <p class="text-sm text-gray-400 dark:text-gray-500">Supports .pgn files and multi-game PGN</p>
+        <input type="file" id="pgn_file" name="pgn_file" accept=".pgn,.txt" class="hidden" onchange="showFileName(this)">
+        <div id="file-name" class="mt-3 text-sm text-green-600 dark:text-green-400 font-medium hidden"></div>
+      </div>
+
+      <!-- Or paste PGN text -->
+      <div class="mb-6">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Or paste PGN text:
+        </label>
+        <textarea name="pgn_text" id="pgn_text" rows="8"
+          placeholder="[Event &quot;Casual Game&quot;]&#10;[White &quot;Player1&quot;]&#10;[Black &quot;Player2&quot;]&#10;&#10;1. e4 e5 2. Nf3 Nc6 ..."
+          class="w-full px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600
+                 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                 font-mono text-sm resize-y
+                 focus:outline-none focus:ring-2 focus:ring-green-500 dark:focus:ring-green-400 focus:border-transparent"></textarea>
+      </div>
+
+      <!-- Options row -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+
+        <!-- Depth -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Analysis Depth
+          </label>
+          <select name="depth" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
+            bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+            focus:outline-none focus:ring-2 focus:ring-green-500">
+            <option value="fast">Fast (depth 12)</option>
+            <option value="balanced" selected>Balanced (depth 18)</option>
+            <option value="deep">Deep (depth 24)</option>
+          </select>
+        </div>
+
+        <!-- Color -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Analyze Moves For
+          </label>
+          <select name="color" class="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600
+            bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+            focus:outline-none focus:ring-2 focus:ring-green-500">
+            <option value="both" selected>Both Players</option>
+            <option value="white">White Only</option>
+            <option value="black">Black Only</option>
+          </select>
+        </div>
+
+        <!-- AI Summary -->
+        <div class="flex flex-col justify-end">
+          <label class="flex items-center gap-2 cursor-pointer {{ 'opacity-50' if not ai_available }}">
+            <input type="checkbox" name="use_ai" id="use_ai"
+              class="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+              {{ 'disabled' if not ai_available }}>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              AI Summary
+              {% if not ai_available %}
+                <span class="text-xs text-gray-400">(set GEMINI_API_KEY)</span>
+              {% endif %}
+            </span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" id="submit-btn"
+        class="w-full py-3 px-6 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl
+               transition-colors duration-200 text-lg shadow-md hover:shadow-lg">
+        🔍 Analyze Game
+      </button>
+
+    </form>
+  </div>
+
+  <!-- Recent Analyses -->
+  {% if recent %}
+  <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6">
+    <h2 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Recent Analyses</h2>
+    <div class="space-y-2">
+      {% for r in recent %}
+      <div class="flex items-center justify-between py-2 px-4 rounded-lg bg-gray-50 dark:bg-gray-700">
+        <div class="text-sm">
+          <span class="font-medium">{{ r.white }}</span>
+          <span class="text-gray-400 mx-2">vs</span>
+          <span class="font-medium">{{ r.black }}</span>
+          {% if r.date %}
+            <span class="text-gray-400 ml-2 text-xs">{{ r.date }}</span>
+          {% endif %}
+        </div>
+        <span class="text-sm font-mono font-semibold
+          {% if r.result == '1-0' %}text-white
+          {% elif r.result == '0-1' %}text-black dark:text-gray-300
+          {% else %}text-gray-500{% endif %}
+          bg-gray-200 dark:bg-gray-600 px-2 py-0.5 rounded">
+          {{ r.result }}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Features -->
+  <div class="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+    {% for icon, label in [('⚡', 'Stockfish Analysis'), ('📖', 'Opening ID'), ('🎯', 'Tactics Detection'), ('📊', 'Accuracy Score')] %}
+    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+      <div class="text-2xl mb-1">{{ icon }}</div>
+      <div class="text-xs text-gray-600 dark:text-gray-400 font-medium">{{ label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function showFileName(input) {
+    const nameEl = document.getElementById('file-name');
+    if (input.files && input.files[0]) {
+      nameEl.textContent = '📄 ' + input.files[0].name;
+      nameEl.classList.remove('hidden');
+    }
+  }
+
+  function handleDrop(event) {
+    event.preventDefault();
+    document.getElementById('drop-zone').classList.remove('border-green-400');
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+      const input = document.getElementById('pgn_file');
+      // Create DataTransfer to set files
+      const dt = new DataTransfer();
+      dt.items.add(files[0]);
+      input.files = dt.files;
+      showFileName(input);
+    }
+  }
+
+  // Show loading state on submit
+  document.getElementById('upload-form').addEventListener('submit', function() {
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Analyzing...';
+    btn.classList.add('opacity-75', 'cursor-not-allowed');
+  });
+</script>
+{% endblock %}

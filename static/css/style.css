@@ -1,0 +1,135 @@
+/* ── Eval bar ─────────────────────────────────────────────── */
+.eval-bar-container {
+  width: 18px;
+  height: 480px;
+  border-radius: 4px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #ccc;
+  background: #1a1a1a;
+}
+
+.eval-bar-white {
+  background: #f0f0f0;
+  transition: height 0.4s ease;
+  flex-shrink: 0;
+}
+
+.eval-bar-black {
+  background: #1a1a1a;
+  transition: height 0.4s ease;
+  flex-shrink: 0;
+}
+
+/* ── Move classification color tokens ─────────────────────── */
+.move-brilliant  { color: #22d3ee; }
+.move-best       { color: #22c55e; }
+.move-excellent  { color: #86efac; }
+.move-good       { color: #9ca3af; }
+.move-inaccuracy { color: #facc15; }
+.move-mistake    { color: #fb923c; }
+.move-blunder    { color: #ef4444; }
+.move-missed_win { color: #a855f7; }
+.move-book       { color: #60a5fa; }
+.move-forced     { color: #d1d5db; }
+
+/* ── Move list ────────────────────────────────────────────── */
+.move-item {
+  transition: background-color 0.15s ease;
+  line-height: 1.6rem;
+  border-radius: 4px;
+}
+
+.move-item:hover {
+  background-color: rgba(34, 197, 94, 0.1);
+}
+
+.move-item.active {
+  background-color: rgba(34, 197, 94, 0.2);
+  font-weight: 700;
+  outline: 2px solid rgba(34, 197, 94, 0.5);
+}
+
+.move-list-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 transparent;
+}
+
+.move-list-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.move-list-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.move-list-scroll::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+/* ── Navigation buttons ───────────────────────────────────── */
+.nav-btn {
+  @apply px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600
+         rounded-lg text-sm font-medium transition-colors cursor-pointer;
+}
+
+/* ── Board highlights ─────────────────────────────────────── */
+.highlight-from {
+  background-color: rgba(255, 255, 0, 0.5) !important;
+}
+
+.highlight-to {
+  background-color: rgba(255, 255, 0, 0.4) !important;
+}
+
+.highlight-best {
+  background-color: rgba(0, 200, 100, 0.4) !important;
+}
+
+/* ── Tab buttons ──────────────────────────────────────────── */
+.tab-btn {
+  cursor: pointer;
+  outline: none;
+}
+
+/* ── Print styles ─────────────────────────────────────────── */
+@media print {
+  nav, footer, .nav-btn, #eval-chart, #move-detail,
+  .tab-btn, button { display: none !important; }
+
+  .eval-bar-container { display: none !important; }
+
+  body { background: white; color: black; }
+
+  #move-list {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* ── Dark mode scrollbar ──────────────────────────────────── */
+.dark .move-list-scroll {
+  scrollbar-color: #6b7280 transparent;
+}
+
+/* ── chessboard.js overrides ──────────────────────────────── */
+#board .square-55d63 {
+  transition: background-color 0.1s;
+}
+
+/* ── Loading spinner ──────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
